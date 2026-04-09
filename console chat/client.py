@@ -2,13 +2,17 @@ import socket
 import threading
 
 PORT = 5050
-SERVER = "IP of your server"
+SERVER = "127.0.0.1"
 ADDR = (SERVER, PORT)
 FORMAT = 'utf-8'
 DISCONNECT_MESSAGE = "!DISCONNECT"
 
 client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 client.connect(ADDR)
+
+# 🔥 вводимо нік
+nickname = input("Enter your nickname: ")
+client.send(nickname.encode(FORMAT))
 
 def receive():
     while True:
