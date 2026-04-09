@@ -2,7 +2,7 @@ import socket
 import threading
 
 PORT = 5050
-SERVER = socket.gethostbyname(socket.gethostname())
+SERVER = "127.0.0.1"
 ADDR = (SERVER, PORT)
 FORMAT = 'utf-8'
 DISCONNECT_MESSAGE = "!DISCONNECT"
@@ -10,44 +10,51 @@ DISCONNECT_MESSAGE = "!DISCONNECT"
 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 server.bind(ADDR)
 
-clients = []
+clients = {}  # conn: nickname
 
-def broadcast(msg, sender):
+def broadcast(msg, sender=None):
     for client in clients:
         if client != sender:
             try:
                 client.send(msg)
             except:
-                clients.remove(client)
+                client.close()
+                clients.pop(client, None)
 
 def handle_client(conn, addr):
     print(f"[NEW CONNECTION] {addr}")
-    clients.append(conn)
+
+    # we get the nick
+    nickname = conn.recv(1024).decode(FORMAT)
+    clients[conn] = nickname
+
+    broadcast(f"[SERVER] {nickname} joined".encode(FORMAT))
 
     while True:
         try:
-            msg = conn.recv(1024)
-            if not msg:
+            msg = conn.recv(1024).decode(FORMAT)
+
+            if msg == DISCONNECT_MESSAGE:
                 break
 
-            decoded = msg.decode(FORMAT)
+            full_msg = f"[{nickname}]: {msg}"
+            print(full_msg)
 
-            if decoded == DISCONNECT_MESSAGE:
-                break
-
-            print(f"[{addr}] {decoded}")
-            broadcast(msg, conn)
+            broadcast(full_msg.encode(FORMAT), conn)
 
         except:
             break
 
-    clients.remove(conn)
+    # вихід
+    print(f"[DISCONNECTED] {nickname}")
+    broadcast(f"[SERVER] {nickname} вийшов".encode(FORMAT))
+
+    clients.pop(conn, None)
     conn.close()
-    print(f"[DISCONNECTED] {addr}")
 
 def start():
     server.listen()
-
+    print(f"[STARTED] Server on {SERVER}")
 
     while True:
         conn, addr = server.accept()
